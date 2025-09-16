@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ตัวช่วยแก้ไข Error</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background-color: #f8f8f8;
+      max-width: 600px;
+      margin: auto;
+    }
+
+    h1, h2 {
+      color: #333;
+      font-size: 1.4em;
+    }
+
+    input, select, button, textarea {
+      padding: 10px;
+      margin: 10px 0;
+      width: 100%;
+      font-size: 16px;
+      box-sizing: border-box;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #result {
+      margin-top: 20px;
+      background: #fff3cd;
+      padding: 15px;
+      border-left: 5px solid #ffcc00;
+      border-radius: 5px;
+    }
+
+    hr {
+      margin: 30px 0;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 10px;
+      }
+
+      h1, h2 {
+        font-size: 1.2em;
+      }
+
+      button {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📘 ตัวช่วยแก้ไข Error เบื้องต้น</h1>
+
+  <label for="errorInput">🔍 พิมพ์ชื่อ error ที่ต้องการค้นหา:</label>
+  <input type="text" id="errorInput" placeholder="เช่น MyError123">
+
+  <label for="errorSelect">หรือเลือกจากรายการ error ที่คุณเคยเพิ่มไว้:</label>
+  <select id="errorSelect">
+    <option value="">-- ยังไม่มี Error --</option>
+  </select>
+
+  <button onclick="showSolution()">ดูวิธีแก้ไข</button>
+
+  <div id="result"></div>
+
+  <hr>
+
+  <h2>🔐 เพิ่มข้อมูล Error (สำหรับเจ้าของเท่านั้น)</h2>
+
+  <label for="adminPassword">ใส่รหัสผ่านเพื่อเพิ่มข้อมูล:</label>
+  <input type="password" id="adminPassword" placeholder="รหัสผ่านเพื่อเพิ่มข้อมูล">
+
+  <input type="text" id="newErrorName" placeholder="ชื่อ Error ใหม่ เช่น MyError123" disabled>
+  <textarea id="newErrorSolution" rows="4" placeholder="ใส่วิธีการแก้ไขของ Error นี้" disabled></textarea>
+  <button id="addBtn" onclick="addNewError()" disabled>เพิ่มข้อมูล</button>
+
+  <script>
+    // 🧠 โหลดข้อมูลจาก localStorage ถ้ามี
+    let solutions = JSON.parse(localStorage.getItem("errorSolutions")) || {};
+
+    // ✅ รหัสผ่านที่ใช้เพื่ออนุญาตให้เพิ่มข้อมูล (เปลี่ยนได้!)
+    const correctPassword = "123456"; // 🔒 คุณควรเปลี่ยนรหัสนี้ให้เฉพาะตัวคุณ
+
+    // อัปเดตรายการ Error ลงใน dropdown
+    function updateErrorDropdown() {
+      const select = document.getElementById("errorSelect");
+      select.innerHTML = '<option value="">-- เลือก Error --</option>';
+      for (const name in solutions) {
+        const option = document.createElement("option");
+        option.value = name;
+        option.text = name;
+        select.appendChild(option);
+      }
+    }
+
+    // ฟังก์ชันดูวิธีแก้ไข
+    function showSolution() {
+      const input = document.getElementById("errorInput").value.trim();
+      const selected = document.getElementById("errorSelect").value;
+      const errorName = input || selected;
+      const resultBox = document.getElementById("result");
+
+      if (!errorName) {
+        resultBox.innerHTML = "<strong>⚠️ กรุณาใส่หรือเลือก error ก่อน</strong>";
+        return;
+      }
+
+      const solution = solutions[errorName];
+      if (solution) {
+        resultBox.innerHTML = `<strong>🛠 วิธีแก้ไขสำหรับ "${errorName}":</strong><br>${solution}`;
+      } else {
+        resultBox.innerHTML = `<strong>❌ ไม่พบข้อมูลของ "${errorName}"</strong><br>คุณสามารถเพิ่มข้อมูลได้ถ้าคุณเป็นเจ้าของ`;
+      }
+    }
+
+    // ฟังก์ชันเพิ่ม Error ใหม่
+    function addNewError() {
+      const name = document.getElementById("newErrorName").value.trim();
+      const solution = document.getElementById("newErrorSolution").value.trim();
+      const resultBox = document.getElementById("result");
+
+      if (!name || !solution) {
+        resultBox.innerHTML = "<strong>⚠️ กรุณากรอกชื่อ error และวิธีแก้ไขให้ครบ</strong>";
+        return;
+      }
+
+      solutions[name] = solution;
+      localStorage.setItem("errorSolutions", JSON.stringify(solutions));
+      updateErrorDropdown();
+
+      document.getElementById("newErrorName").value = "";
+      document.getElementById("newErrorSolution").value = "";
+
+      resultBox.innerHTML = `<strong>✅ เพิ่ม "${name}" เรียบร้อยแล้ว!</strong>`;
+    }
+
+    // ตรวจสอบรหัสผ่าน
+    document.getElementById("adminPassword").addEventListener("input", function () {
+      const pass = this.value;
+      const isCorrect = pass === correctPassword;
+
+      document.getElementById("newErrorName").disabled = !isCorrect;
+      document.getElementById("newErrorSolution").disabled = !isCorrect;
+      document.getElementById("addBtn").disabled = !isCorrect;
+    });
+
+    // โหลด dropdown เมื่อเปิดเว็บ
+    window.onload = updateErrorDropdown;
+  </script>
+
+</body>
+</html>
