@@ -216,7 +216,41 @@
       }
     }
 
-    function checkPassword() {
+        function checkPassword() {
       const password = document.getElementById("adminPassword").value.trim();
       const nameInput = document.getElementById("newErrorName");
-      const solution
+      const solutionInput = document.getElementById("newErrorSolution");
+      const addButton = document.getElementById("addBtn");
+      const resultBox = document.getElementById("result");
+
+      if (password === correctPassword) {
+        nameInput.disabled = false;
+        solutionInput.disabled = false;
+        addButton.disabled = false;
+        resultBox.innerHTML = `<strong>✅ ยืนยันรหัสผ่านสำเร็จ สามารถเพิ่มข้อมูลได้แล้ว</strong>`;
+      } else {
+        resultBox.innerHTML = `<strong>❌ รหัสผ่านไม่ถูกต้อง</strong>`;
+      }
+    }
+
+    function clearPassword() {
+      document.getElementById("adminPassword").value = "";
+      document.getElementById("newErrorName").value = "";
+      document.getElementById("newErrorSolution").value = "";
+      document.getElementById("newErrorName").disabled = true;
+      document.getElementById("newErrorSolution").disabled = true;
+      document.getElementById("addBtn").disabled = true;
+      document.getElementById("result").innerHTML = "";
+    }
+
+    document.getElementById("showPass").addEventListener("change", function () {
+      const passField = document.getElementById("adminPassword");
+      passField.type = this.checked ? "text" : "password";
+    });
+
+    // เรียกใช้งานตอนโหลด
+    updateErrorDropdown();
+  </script>
+</body>
+</html>
+
