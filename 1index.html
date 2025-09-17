@@ -65,6 +65,10 @@
       }
     }
   </style>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
 </head>
 <body>
 
@@ -75,7 +79,7 @@
 
   <label for="errorSelect">หรือเลือกจากรายการ error ที่คุณเคยเพิ่มไว้:</label>
   <select id="errorSelect">
-    <option value="">-- ยังไม่มี Error --</option>
+    <option value="">-- กำลังโหลด Error --</option>
   </select>
 
   <button onclick="showSolution()">ดูวิธีแก้ไข</button>
@@ -93,26 +97,42 @@
   <label><input type="checkbox" id="showPass"> แสดงรหัสผ่าน</label>
   <button onclick="clearPassword()">ล้างรหัสผ่าน</button>
 
-  <input type="text" id="newErrorName" placeholder="ชื่อ Error ใหม่ เช่น E01" disabled>
+  <input type="text" id="newErrorName" placeholder="ชื่อ Error ใหม่ เช่น MyError123" disabled>
   <textarea id="newErrorSolution" rows="4" placeholder="ใส่วิธีการแก้ไขของ Error นี้" disabled></textarea>
   <button id="addBtn" onclick="addNewError()" disabled>เพิ่มข้อมูล</button>
 
-  <script>
-    let solutions = JSON.parse(localStorage.getItem("errorSolutions")) || {};
-    const correctPassword = "132546"; // 🔒 เปลี่ยนรหัสนี้ให้เป็นของคุณ
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    function updateErrorDropdown() {
+    // ✅ Firebase Config ของคุณ
+    const firebaseConfig = {
+      apiKey: "AIzaSyCkZgPoug4gJAOsrbqpvjGyKr8Q3RrmokE",
+      authDomain: "bpbio320-89c27.firebaseapp.com",
+      projectId: "bpbio320-89c27",
+      storageBucket: "bpbio320-89c27.firebasestorage.app",
+      messagingSenderId: "449529387736",
+      appId: "1:449529387736:web:dc9ba687a8ff32d8d715ad",
+      measurementId: "G-2J6Z0JPCXC"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const correctPassword = "132546"; // 🔒 เปลี่ยนได้ตามต้องการ
+
+    async function updateErrorDropdown() {
       const select = document.getElementById("errorSelect");
       select.innerHTML = '<option value="">-- เลือก Error --</option>';
-      for (const name in solutions) {
+      const querySnapshot = await getDocs(collection(db, "errors"));
+      querySnapshot.forEach((docSnap) => {
         const option = document.createElement("option");
-        option.value = name;
-        option.text = name;
+        option.value = docSnap.id;
+        option.text = docSnap.id;
         select.appendChild(option);
-      }
+      });
     }
 
-    function showSolution() {
+    async function showSolution() {
       const input = document.getElementById("errorInput").value.trim();
       const selected = document.getElementById("errorSelect").value;
       const errorName = input || selected;
@@ -123,15 +143,17 @@
         return;
       }
 
-      const solution = solutions[errorName];
-      if (solution) {
-        resultBox.innerHTML = `<strong>🛠 วิธีแก้ไขสำหรับ "${errorName}":</strong><br>${solution}`;
+      const docRef = doc(db, "errors", errorName);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        resultBox.innerHTML = `<strong>🛠 วิธีแก้ไขสำหรับ "${errorName}":</strong><br>${docSnap.data().solution}`;
       } else {
         resultBox.innerHTML = `<strong>❌ ไม่พบข้อมูลของ "${errorName}"</strong>`;
       }
     }
 
-    function addNewError() {
+    async function addNewError() {
       const name = document.getElementById("newErrorName").value.trim();
       const solution = document.getElementById("newErrorSolution").value.trim();
       const resultBox = document.getElementById("result");
@@ -141,22 +163,21 @@
         return;
       }
 
-      if (solutions[name]) {
+      const docRef = doc(db, "errors", name);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
         resultBox.innerHTML = `<strong>⚠️ ข้อมูล "${name}" มีอยู่แล้ว</strong>`;
         return;
       }
 
-      solutions[name] = solution;
-      localStorage.setItem("errorSolutions", JSON.stringify(solutions));
+      await setDoc(docRef, { solution });
       updateErrorDropdown();
-
+      resultBox.innerHTML = `<strong>✅ เพิ่ม "${name}" เรียบร้อยแล้ว!</strong>`;
       document.getElementById("newErrorName").value = "";
       document.getElementById("newErrorSolution").value = "";
-
-      resultBox.innerHTML = `<strong>✅ เพิ่ม "${name}" เรียบร้อยแล้ว!</strong>`;
     }
 
-    function deleteError() {
+    async function deleteError() {
       const selected = document.getElementById("errorSelect").value;
       const resultBox = document.getElementById("result");
 
@@ -168,13 +189,12 @@
       const confirmed = confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบ "${selected}"?`);
       if (!confirmed) return;
 
-      delete solutions[selected];
-      localStorage.setItem("errorSolutions", JSON.stringify(solutions));
+      await deleteDoc(doc(db, "errors", selected));
       updateErrorDropdown();
       resultBox.innerHTML = `<strong>🗑 ลบ "${selected}" เรียบร้อยแล้ว</strong>`;
     }
 
-    function editError() {
+    async function editError() {
       const selected = document.getElementById("errorSelect").value;
       const resultBox = document.getElementById("result");
 
@@ -183,43 +203,14 @@
         return;
       }
 
-      const currentSolution = solutions[selected];
-      const newSolution = prompt(`✏️ แก้ไขวิธีแก้ไขสำหรับ "${selected}"`, currentSolution);
+      const docRef = doc(db, "errors", selected);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        resultBox.innerHTML = `<strong>❌ ไม่พบข้อมูล "${selected}"</strong>`;
+        return;
+      }
 
+      const newSolution = prompt(`✏️ แก้ไขวิธีแก้ไขสำหรับ "${selected}"`, docSnap.data().solution);
       if (newSolution !== null) {
-        solutions[selected] = newSolution;
-        localStorage.setItem("errorSolutions", JSON.stringify(solutions));
-        resultBox.innerHTML = `<strong>✅ แก้ไข "${selected}" เรียบร้อยแล้ว</strong>`;
-      }
-    }
-
-    document.getElementById("adminPassword").addEventListener("input", function () {
-      const pass = this.value;
-      const isCorrect = pass === correctPassword;
-
-      document.getElementById("newErrorName").disabled = !isCorrect;
-      document.getElementById("newErrorSolution").disabled = !isCorrect;
-      document.getElementById("addBtn").disabled = !isCorrect;
-
-      if (isCorrect) {
-        document.getElementById("result").innerHTML = "✅ ยืนยันตัวตนสำเร็จ: สามารถเพิ่มข้อมูลได้แล้ว";
-      }
-    });
-
-    document.getElementById("showPass").addEventListener("change", function () {
-      const passwordField = document.getElementById("adminPassword");
-      passwordField.type = this.checked ? "text" : "password";
-    });
-
-    function clearPassword() {
-      document.getElementById("adminPassword").value = "";
-      document.getElementById("newErrorName").disabled = true;
-      document.getElementById("newErrorSolution").disabled = true;
-      document.getElementById("addBtn").disabled = true;
-    }
-
-    window.onload = updateErrorDropdown;
-  </script>
-
-</body>
-</html>
+        await setDoc(docRef, { solution: newSolution });
+        result
